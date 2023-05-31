@@ -77,4 +77,25 @@ def RSAKeyEncryption(FILENAME: str, FILENAME2: str):
     with open(f"{FILENAME[:-4]}Encrypted.txt", "w") as fileInfo:
         fileInfo.writelines(EKey)
 
-RSAKeyEncryption("symmetricalKey.txt", "publicKey.txt")
+#*  This function encrypts the symmetrical key of the AES with an unsymmetric key, so that it can be shared safely. FILENAME is the file with the key you want to encrypt (symmetricalKey), and FILENAME2 is the file with the key you want to encrypt with. FILENAME3 is the filename you want to give the decrypted output file.
+def RSAKeyDecryption(FILENAME: str, FILENAME2: str, FILENAME3: str):
+    #*  This part sets the list which will be used to output the decrypted key to a file.
+    AESKey = []
+
+    #*  This part gets the exponent and the product from the private key.
+    with open(FILENAME2, "r") as fileInfo:
+        privateKey = fileInfo.readlines()
+        d = int(privateKey[0][:-1])
+        n = int(privateKey[1][:-1])
+    
+    #*  This part gets the encrypted symmetrical key and outputs the decrypted key to the AESKey list.
+    with open(FILENAME, "r") as fileInfo:
+        for item in fileInfo.readlines():
+            line = int(item[:-1])
+            AESKey.append(f"{line**d%n}\n")
+
+    #*  This part outputs the decrypted symmetrical key to a file.
+    with open(FILENAME3, "w") as fileInfo:
+        fileInfo.writelines(AESKey)
+
+RSAKeyDecryption("symmetricalKeyEncrypted.txt", "privateKey.txt", "symmetricalKeyDecrypted")
