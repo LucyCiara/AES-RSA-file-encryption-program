@@ -1,7 +1,7 @@
 import random as r
 import math as m
 
-#*  This function generates a public and a private key.
+#*  This function generates a public and a private key. FILENAME is the filename of the file containing all the prime numbers to pull primes from.
 def RSAKeyGeneration(FILENAME: str):
      #*  This is a function for executing the Euler Function ϕ(n), which is a mathematical operation used in RSA encryption which inputs the product of two primes "n", and returns the answer to the mathematical operation (p-1)*(q-1), where p and q are the two prime factors of n. Having "n" as a parameter doesn't have any effective use in the code, but is there for formality's sake to show that it's the euler function.
     def Euler(n):
@@ -41,11 +41,11 @@ def RSAKeyGeneration(FILENAME: str):
     
     #*  This part creates an output file for the private and public keys.
     with open("privateKey.txt", "w") as fileInfo:
-        fileInfo.write(f"{d}\n{n}")
+        fileInfo.write(f"{d}\n{n}\n")
     with open("publicKey.txt", "w") as fileInfo:
-        fileInfo.write(f"{e}\n{n}")
+        fileInfo.write(f"{e}\n{n}\n")
 
-#*  This function generates a random symmetrical key for use in AES encryption.
+#*  This function generates a random symmetrical key for use in AES encryption. LENGTH is the target bitlength of the AES key
 def AESKeyGeneration(LENGTH: int):
     #*  This part creates the list which will be used to add a bunch of numbers to the output file.
     AESKey = []
@@ -55,5 +55,26 @@ def AESKeyGeneration(LENGTH: int):
         AESKey.append(f"{r.randint(0, 256-1)}\n")
     with open("symmetricalKey.txt", "w") as fileInfo:
         fileInfo.writelines(AESKey)
-            
-AESKeyGeneration(128)
+
+#*  This function encrypts the symmetrical key of the AES with an unsymmetric key, so that it can be shared safely. FILENAME is the file with the key you want to encrypt (symmetricalKey), and FILENAME2 is the file with the key you want to encrypt with.
+def RSAKeyEncryption(FILENAME: str, FILENAME2: str):
+    #*  This part sets the list which will be used to output the encrypted key to a file.
+    EKey = []
+
+    #*  This part gets the exponent and the product from the public key.
+    with open(FILENAME2, "r") as fileInfo:
+        publicKey = fileInfo.readlines()
+        e = int(publicKey[0][:-1])
+        n = int(publicKey[1][:-1])
+
+    #*  This part gets the symmetrical key and outputs the encrypted key to the EKey list.
+    with open(FILENAME, "r") as fileInfo:
+        for item in fileInfo.readlines():
+            line = int(item[:-1])
+            EKey.append(f"{line**e%n}\n")
+
+    #*  This part outputs the encrypted symmetrical key to a file.
+    with open(f"{FILENAME[:-4]}Encrypted.txt", "w") as fileInfo:
+        fileInfo.writelines(EKey)
+
+RSAKeyEncryption("symmetricalKey.txt", "publicKey.txt")
