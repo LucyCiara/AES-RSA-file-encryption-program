@@ -98,4 +98,39 @@ def RSAKeyDecryption(FILENAME: str, FILENAME2: str, FILENAME3: str):
     with open(FILENAME3, "w") as fileInfo:
         fileInfo.writelines(AESKey)
 
-RSAKeyDecryption("symmetricalKeyEncrypted.txt", "privateKey.txt", "symmetricalKeyDecrypted")
+def AESFileRoundKey(FILENAME: str, FILENAME2: str, FILENAME3: str):
+    #*  This function extracts the binary data from a file. FILENAME is the name of the file you want to encrypt.
+    def get_binary_data(FILENAME):
+        with open(FILENAME, 'rb') as fileInfo:
+            binary_data = fileInfo.read()
+            return binary_data
+
+    def keyExpansion(FILENAME2, FILENAME3):
+        Key0, Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9, Key10 = [], [], [], [], [], [], [], [], [], [], []
+        def initialKey(FILENAME2, Key0):
+            with open(FILENAME2, 'r') as fileInfo:
+                for item in fileInfo.readlines():
+                    Key0.append(int(item[:-1]))
+
+        def rotKey(key0):
+            for i in range(0, 4):
+                key0.insert((4*i)+3, key0.pop(4*i))
+
+        # def substituteByte(FILENAME3):
+        #     def sBoxExtraction(FILENAME3):
+
+            
+        
+        initialKey(FILENAME2, Key0)
+        print(Key0)
+        rotKey(Key0)
+        print(Key0)
+
+
+    
+    keyExpansion(FILENAME2, FILENAME3)
+
+AESFileRoundKey("Yeenoghu.png", "symmetricalKey.txt", "S-box.txt")
+
+        
+
