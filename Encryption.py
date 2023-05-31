@@ -2,7 +2,7 @@ import random as r
 import math as m
 
 #*  This function generates a public and a private key.
-def RSAKeyGeneration(FILENAME):
+def RSAKeyGeneration(FILENAME: str):
      #*  This is a function for executing the Euler Function ϕ(n), which is a mathematical operation used in RSA encryption which inputs the product of two primes "n", and returns the answer to the mathematical operation (p-1)*(q-1), where p and q are the two prime factors of n. Having "n" as a parameter doesn't have any effective use in the code, but is there for formality's sake to show that it's the euler function.
     def Euler(n):
         return (p-1)*(q-1)
@@ -40,9 +40,20 @@ def RSAKeyGeneration(FILENAME):
             run = False
     
     #*  This part creates an output file for the private and public keys.
-    with open("privateKey", "w") as fileInfo:
+    with open("privateKey.txt", "w") as fileInfo:
         fileInfo.write(f"{d}\n{n}")
-    with open("publicKey", "w") as fileInfo:
+    with open("publicKey.txt", "w") as fileInfo:
         fileInfo.write(f"{e}\n{n}")
 
-RSAKeyGeneration("largePrimes")
+#*  This function generates a random symmetrical key for use in AES encryption.
+def AESKeyGeneration(LENGTH: int):
+    #*  This part creates the list which will be used to add a bunch of numbers to the output file.
+    AESKey = []
+
+    #* This part adds a number of bytes, as represented by a number, to the key enough times that the key reaches the required bit length (usually 128)
+    for i in range(int(LENGTH/8)):
+        AESKey.append(f"{r.randint(0, 256-1)}\n")
+    with open("symmetricalKey.txt", "w") as fileInfo:
+        fileInfo.writelines(AESKey)
+            
+AESKeyGeneration(128)
