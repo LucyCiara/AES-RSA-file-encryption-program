@@ -1,6 +1,14 @@
 import random as r
 import math as m
 
+
+sBox = {}
+def sBoxExtraction(FILENAME: str, sBox: dict):
+    with open(FILENAME, "r") as fileInfo:
+        for item in fileInfo:
+            index = item.find(",")
+            sBox[str(int(item[:index], 2))] = str(int(item[index+1:], 2))
+
 #*  This function generates a public and a private key. FILENAME is the filename of the file containing all the prime numbers to pull primes from.
 def RSAKeyGeneration(FILENAME: str):
      #*  This is a function for executing the Euler Function ϕ(n), which is a mathematical operation used in RSA encryption which inputs the product of two primes "n", and returns the answer to the mathematical operation (p-1)*(q-1), where p and q are the two prime factors of n. Having "n" as a parameter doesn't have any effective use in the code, but is there for formality's sake to show that it's the euler function.
@@ -98,39 +106,81 @@ def RSAKeyDecryption(FILENAME: str, FILENAME2: str, FILENAME3: str):
     with open(FILENAME3, "w") as fileInfo:
         fileInfo.writelines(AESKey)
 
-def AESFileRoundKey(FILENAME: str, FILENAME2: str, FILENAME3: str):
+#*  This function executes the round key encryption part of the AES algorithm. FILENAME is the file name of the file you want to encrypt, FILENAME2 is the file name of the file containing the AES key, sBox is the S-Box dictionary, FIRSTRUN is a bool that ensures that the creation of the keys only happens once.
+roundKeyList = []
+def AESFileRoundKey(FILENAME: str, FILENAME2: str, sBox: dict, roundKeyList: list):
     #*  This function extracts the binary data from a file. FILENAME is the name of the file you want to encrypt.
     def get_binary_data(FILENAME):
         with open(FILENAME, 'rb') as fileInfo:
             binary_data = fileInfo.read()
             return binary_data
 
-    def keyExpansion(FILENAME2, FILENAME3):
+    #*  This function expands the key, as the round key process is supposed to be done multiple times with a key derived from the original key. Because we're using a 128-bit key, we will need 11 keys, since we need a key for the start, and 10 keys for each of the 10 encryption rounds.
+    def keyExpansion(FILENAME2, sBox, roundKeyList):
+        #*  Declares the variables for use in expanding the key.
         Key0, Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9, Key10 = [], [], [], [], [], [], [], [], [], [], []
+        for item in [Key0, Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9, Key10]:
+            roundKeyList.append(item)
+        KeyChunk = []
+        
+        #*  This function sets Key0 to be the initial given key.
         def initialKey(FILENAME2, Key0):
             with open(FILENAME2, 'r') as fileInfo:
                 for item in fileInfo.readlines():
                     Key0.append(int(item[:-1]))
 
-        def rotKey(key0):
-            for i in range(0, 4):
-                key0.insert((4*i)+3, key0.pop(4*i))
-
-        # def substituteByte(FILENAME3):
-        #     def sBoxExtraction(FILENAME3):
-
-            
+        #*  This function takes the last 4 bytes of a key.
+        def keyChunkPrepare(Key, KeyChunk):
+            KeyChunk.clear()
+            for item in Key[-4:]:
+                KeyChunk.append(item)
         
+        #* This function shuffles the last 4 bytes of a key.
+        def rotKey(KeyChunk):
+            KeyChunk.insert(0, KeyChunk.pop(-1))
+
+        #*  This function replaces the shuffled 4 last bytes of a key with other bytes from an S-Box map I made.
+        def substituteByte(KeyChunk, sBox):
+            tempKey = []
+            for item in KeyChunk:
+                tempKey.append(int(sBox[str(item)]))
+            KeyChunk.clear()
+            for item in tempKey:
+                KeyChunk.append(item)
+        
+        #*  This function XORs the shuffled and substituted 2 last bytes of a key with the keynumber (round constant).
+        def roundConst(round, KeyChunk):
+            tempKey = []
+            for item in KeyChunk:
+                tempKey.append(item^(round+1))
+            KeyChunk.clear()
+            for item in tempKey:
+                KeyChunk.append(item)
+
+        #*  Here the first key is pulled.
         initialKey(FILENAME2, Key0)
-        print(Key0)
-        rotKey(Key0)
-        print(Key0)
 
-
+        #*  Here 10 keys are created using the other functions.
+        for i in range(10):
+            roundKeyList = [Key0, Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9, Key10]
+            keyChunkPrepare(roundKeyList[i], KeyChunk)
+            rotKey(KeyChunk)
+            substituteByte(KeyChunk, sBox)
+            roundConst(i, KeyChunk)
+            for x in range(4):
+                roundKeyList[i+1].append(KeyChunk[x])
+            for x in range(3):
+                for y in range(4):
+                    #!
+                    xor = roundKeyList[i][x*4:x*4+4][y]^roundKeyList[i+1][x*4:x*4+4][y]
+                    roundKeyList[i+1].append(xor)
     
-    keyExpansion(FILENAME2, FILENAME3)
+    #*  If the keys in roundKeyList haven't already been created, the keys will be created.
+    if roundKeyList == []:
+        keyExpansion(FILENAME2, sBox, roundKeyList)
+        print(roundKeyList)
 
-AESFileRoundKey("Yeenoghu.png", "symmetricalKey.txt", "S-box.txt")
-
-        
-
+sBoxExtraction("S-box.txt", sBox)
+AESFileRoundKey("Yeenoghu.png", "symmetricalKey.txt", sBox, roundKeyList)
+AESFileRoundKey("Yeenoghu.png", "symmetricalKey.txt", sBox, roundKeyList)
+print(roundKeyList)
