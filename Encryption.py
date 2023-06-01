@@ -1,13 +1,19 @@
 import random as r
 import math as m
 
-
+#*  This function extracts the S-Box from the S-box.txt file, and converts it to numbers.
 sBox = {}
 def sBoxExtraction(FILENAME: str, sBox: dict):
     with open(FILENAME, "r") as fileInfo:
         for item in fileInfo:
             index = item.find(",")
             sBox[str(int(item[:index], 2))] = str(int(item[index+1:], 2))
+
+#*  This function extracts the binary data from a file. FILENAME is the name of the file you want to encrypt.
+def get_binary_data(FILENAME):
+    with open(FILENAME, 'rb') as fileInfo:
+        binary_data = fileInfo.read()
+        return binary_data
 
 #*  This function generates a public and a private key. FILENAME is the filename of the file containing all the prime numbers to pull primes from.
 def RSAKeyGeneration(FILENAME: str):
@@ -106,17 +112,9 @@ def RSAKeyDecryption(FILENAME: str, FILENAME2: str, FILENAME3: str):
     with open(FILENAME3, "w") as fileInfo:
         fileInfo.writelines(AESKey)
 
-#*  This function executes the round key encryption part of the AES algorithm. FILENAME is the file name of the file you want to encrypt, FILENAME2 is the file name of the file containing the AES key, sBox is the S-Box dictionary, FIRSTRUN is a bool that ensures that the creation of the keys only happens once.
+#*  This function expands the key. FILENAME is the filename of the file containing the AES key, sBox is the dictionary used as a Substitute Byte lookuptable, roundKeyList is the list you want to output the expanded key to (each round's key is its own nested list). Because we're using a 128-bit key, we will need 11 keys, since we need a key for the start, and 10 keys for each of the 10 encryption rounds.
 roundKeyList = []
-def AESFileRoundKey(FILENAME: str, FILENAME2: str, sBox: dict, roundKeyList: list):
-    #*  This function extracts the binary data from a file. FILENAME is the name of the file you want to encrypt.
-    def get_binary_data(FILENAME):
-        with open(FILENAME, 'rb') as fileInfo:
-            binary_data = fileInfo.read()
-            return binary_data
-
-    #*  This function expands the key, as the round key process is supposed to be done multiple times with a key derived from the original key. Because we're using a 128-bit key, we will need 11 keys, since we need a key for the start, and 10 keys for each of the 10 encryption rounds.
-    def keyExpansion(FILENAME2, sBox, roundKeyList):
+def keyExpansion(FILENAME, sBox, roundKeyList):
         #*  Declares the variables for use in expanding the key.
         Key0, Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9, Key10 = [], [], [], [], [], [], [], [], [], [], []
         for item in [Key0, Key1, Key2, Key3, Key4, Key5, Key6, Key7, Key8, Key9, Key10]:
@@ -124,8 +122,8 @@ def AESFileRoundKey(FILENAME: str, FILENAME2: str, sBox: dict, roundKeyList: lis
         KeyChunk = []
         
         #*  This function sets Key0 to be the initial given key.
-        def initialKey(FILENAME2, Key0):
-            with open(FILENAME2, 'r') as fileInfo:
+        def initialKey(FILENAME, Key0):
+            with open(FILENAME, 'r') as fileInfo:
                 for item in fileInfo.readlines():
                     Key0.append(int(item[:-1]))
 
@@ -158,7 +156,7 @@ def AESFileRoundKey(FILENAME: str, FILENAME2: str, sBox: dict, roundKeyList: lis
                 KeyChunk.append(item)
 
         #*  Here the first key is pulled.
-        initialKey(FILENAME2, Key0)
+        initialKey(FILENAME, Key0)
 
         #*  Here 10 keys are created using the other functions.
         for i in range(10):
@@ -174,13 +172,37 @@ def AESFileRoundKey(FILENAME: str, FILENAME2: str, sBox: dict, roundKeyList: lis
                     #!
                     xor = roundKeyList[i][x*4:x*4+4][y]^roundKeyList[i+1][x*4:x*4+4][y]
                     roundKeyList[i+1].append(xor)
+
+#*  This function encrypts the file information using XOR. dataToEncrypt is the list with numbers representing the bytes in a file.
+def roundKeyEncryption(dataToEncrypt, key):
+    #*  This part makes sure that the file's number of bytes is divisible by 16
+    while len(dataToEncrypt)%16 != 0:
+        dataToEncrypt.append(32)
     
-    #*  If the keys in roundKeyList haven't already been created, the keys will be created.
-    if roundKeyList == []:
-        keyExpansion(FILENAME2, sBox, roundKeyList)
-        print(roundKeyList)
+    #*  This part is the encryption part. It takes a 16 byte big chunk (same length as the key) from dataToEncrypt and encrypts that chunk. 
+    for x in range(int(len(dataToEncrypt)/16)):
+        tempList = dataToEncrypt[x*16:(x+1)*16]
+        del dataToEncrypt[x*16:(x+1)*16]
+        for y in range(len(tempList)):
+            dataToEncrypt.insert(x*16+y, key[y]^tempList[y])
+
 
 sBoxExtraction("S-box.txt", sBox)
-AESFileRoundKey("Yeenoghu.png", "symmetricalKey.txt", sBox, roundKeyList)
-AESFileRoundKey("Yeenoghu.png", "symmetricalKey.txt", sBox, roundKeyList)
-print(roundKeyList)
+
+keyExpansion("symmetricalKey.txt", sBox, roundKeyList)
+
+fileData = list(get_binary_data("testfile.txt"))
+
+for i in range(11):
+    roundKeyEncryption(fileData, roundKeyList[i])
+
+decryptedFileData = fileData.copy()
+for i in range(11):
+    roundKeyEncryption(decryptedFileData, roundKeyList[-i-1])
+decryptedFileData = bytes(decryptedFileData)
+with open("Decrypted file", "wb") as fileInfo:
+    fileInfo.write(decryptedFileData)
+
+fileData = bytes(fileData)
+with open("Encrypted file", "wb") as fileInfo:
+    fileInfo.write(fileData)
