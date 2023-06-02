@@ -36,7 +36,7 @@ def RSAKeyGeneration(FILENAME: str):
     #*  This part sets variable n, which is the product of the factors p and q.
     n = p*q
     
-    #*  This part creates a variable e, which will become the exponent of the public key. e has to be more than 1, and less than ϕ(n)
+    #*  This part creates a variable e, which will become the exponent of the public key. e has to be more than 1, and less than ϕ(n).
     e = r.randint(1000, Euler(n)-1)
     while m.gcd(e, Euler(n)) != 1:
         e -= 1
@@ -89,7 +89,7 @@ def RSAKeyEncryption(FILENAME: str, FILENAME2: str):
     with open(f"{FILENAME[:-4]}Encrypted.txt", "w") as fileInfo:
         fileInfo.writelines(EKey)
 
-#*  This function encrypts the symmetrical key of the AES with an unsymmetric key, so that it can be shared safely. FILENAME is the file with the key you want to encrypt (symmetricalKey), and FILENAME2 is the file with the key you want to encrypt with. FILENAME3 is the filename you want to give the decrypted output file.
+#*  This function encrypts the symmetrical key of the AES with an unsymmetric key, so that it can be shared safely. FILENAME is the file with the key you want to decrypt (symmetricalKey), and FILENAME2 is the file with the key you want to encrypt with. FILENAME3 is the filename you want to give the decrypted output file.
 def RSAKeyDecryption(FILENAME: str, FILENAME2: str, FILENAME3: str):
     #*  This part sets the list which will be used to output the decrypted key to a file.
     AESKey = []
@@ -200,6 +200,13 @@ def AESEncryption(FILENAME: str, FILENAME2: str, sBox: dict):
         for i in range(len(dataToEncrypt)):
             dataToEncrypt.insert(i, int(table[str(dataToEncrypt.pop(i))]))
 
+    #*  This function diffuses the result by mixing the items of each row in the 4x4 grid which AES encryption is displayed in.
+    def shiftRows(dataToEncrypt):
+        for i in range(3):
+            for x in range(i):
+                dataToEncrypt.insert(i*4, dataToEncrypt.pop(i*4+3))
+
+
     #*  Fetches and prepares the bytes of a file, and then expands the AES key
     data = list(get_binary_data(FILENAME))
     fileRelength(data, True)
@@ -213,8 +220,10 @@ def AESEncryption(FILENAME: str, FILENAME2: str, sBox: dict):
         roundKeyEncode(tempList, roundKeyList[0])
         for x in range(1, 10):
             substituteBytes(tempList, sBox)
+            shiftRows(tempList)
             roundKeyEncode(tempList, roundKeyList[x])
         substituteBytes(tempList, sBox)
+        shiftRows(tempList)
         roundKeyEncode(tempList, roundKeyList[10])
 
         for x in range(0, 16):
@@ -223,7 +232,7 @@ def AESEncryption(FILENAME: str, FILENAME2: str, sBox: dict):
     with open("EncryptedFile", "wb") as fileInfo:
         fileInfo.write(bytes(data))
 
-#*  This function encrypts the data of a file using AES methods. FILENAME is the file name of the file you want to encrypt, FILENAME2 is the file name of the file containing the AES key, and sBox is the S-Box dictionary.
+#*  This function encrypts the data of a file using AES methods. FILENAME is the file name of the file you want to decrypt, FILENAME2 is the file name of the file containing the AES key, sBox is the S-Box dictionary, rsBox is the inverse S-Box dictionary.
 def AESDecryption(FILENAME: str, FILENAME2: str, sBox: dict, rsBox: dict):
     #*  This function extracts the binary data from a file. FILENAME is the name of the file you want to encrypt.
     def get_binary_data(FILENAME):
@@ -308,6 +317,12 @@ def AESDecryption(FILENAME: str, FILENAME2: str, sBox: dict, rsBox: dict):
         for i in range(len(dataToDecrypt)):
             dataToDecrypt.insert(i, key[i]^dataToDecrypt.pop(i))
 
+    #*  This function diffuses the result by mixing the items of each row in the 4x4 grid which AES encryption is displayed in.
+    def invShiftRows(dataToDecrypt):
+        for i in range(3):
+            for x in range(i):
+                dataToDecrypt.insert(i*4+3, dataToDecrypt.pop(i*4))
+
     #*  This function substitues every byte in the 16-byte chunk. dataToDecrypt is a 16-byte chunk of data, table is either an S-Box (sBox) or a reverse S-Box (rsBox).
     def substituteBytes(dataToDecrypt, table):
         for i in range(len(dataToDecrypt)):
@@ -323,9 +338,11 @@ def AESDecryption(FILENAME: str, FILENAME2: str, sBox: dict, rsBox: dict):
         del data[i*16:(i+1)*16]
 
         roundKeyDecode(tempList, roundKeyList[10])
+        invShiftRows(tempList)
         substituteBytes(tempList, rsBox)
         for x in range(1, 10):
             roundKeyDecode(tempList, roundKeyList[-x-1])
+            invShiftRows(tempList)
             substituteBytes(tempList, rsBox)
         roundKeyDecode(tempList, roundKeyList[0])
 
@@ -338,6 +355,35 @@ def AESDecryption(FILENAME: str, FILENAME2: str, sBox: dict, rsBox: dict):
         fileInfo.write(bytes(data))
 
 sBoxExtraction("S-box.txt", sBox, rsBox)
-AESEncryption("testfile.txt", "symmetricalKey.txt", sBox)
-AESDecryption("EncryptedFile", "symmetricalKey.txt", sBox, rsBox)
+
+#*  A UI for the encryption program.
+run = True
+while run:
+    inputString = input("Do you want to Generate RSA keys (1)\nGenerate AES key (2)\nEncrypt AES key with an RSA key (3)\nDecrypt AES key with RSA key (4)\nEncrypt file with AES key (5)\nDecrypt file with AES key (6)\nExit (7)\n(Know that generating new keys will replace the old ones)\n")
+    if inputString == "1":
+        input("One public key will be created, and one private key will be created.\nYou can share your public key with anyone, but you must keep your private key secret.\nYour new generated key will replace the old key.\nUnderstood?\n")
+        RSAKeyGeneration("largePrimes.txt")
+    elif inputString == "2":
+        input("Only share this key with people you trust.\nYour new generated key will replace the old key.\nUnderstood?\n")
+        AESKeyGeneration(128)
+    elif inputString == "3":
+        inputString = input("Write the name of the file containing the key you want to encrypt.\n")
+        inputString2 = input("Write the filename of the file containing the RSA key you want to encrypt with\nExample:   publicKey.txt\n(It is recommended against encrypting sensitive data with only your private key for security reasons)\n")
+        RSAKeyEncryption(inputString, inputString2)
+    elif inputString == "4":
+        inputString = input("Write the name of the file containing the key you want to decrypt.\n")
+        inputString2 = input("Write the filename of the file containing the RSA key you want to decrypt with\nExample:   privateKey.txt\n")
+        inputString3 = input("Name the new file\nExample:   symmetricalKeyDecrypted.txt\n")
+        RSAKeyDecryption(inputString, inputString2, inputString3)
+    elif inputString == "5":
+        inputString = input("Write the name of the file you want to encrypt.\n")
+        inputString2 = input("Write the filename of the file containing the AES key you want to encrypt with.\nExample:   symmetricalKey.txt\n")
+        AESEncryption(inputString, "symmetricalKey.txt", sBox)
+    elif inputString == "6":
+        inputString = input("Write the name of the file you want to decrypt.\n")
+        inputString2 = input("Write the filename of the file containing the AES key you want to decrypt with.\nExample:   symmetricalKey.txt\n")
+        AESDecryption(inputString, "symmetricalKey.txt", sBox, rsBox)
+    else:
+        run = False
+
 
