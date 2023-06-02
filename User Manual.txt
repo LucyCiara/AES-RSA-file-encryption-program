@@ -1,0 +1,21 @@
+How to use:
+    0.  Start the program! When you start the program, all the options will be displayed for you. To select an option, type the number of that option. Type 7 or anything other than the displayed numbers, and you will exit the program.
+    1.  Generate your keys. You will need the keys for encryption and decryption. The keys you need to generate are the RSA keys called a public key[1] and a private key[2], and the AES key called symmetrical key[3]. Choose to generate RSA keys to generate your public and private keys, and then choose to generate the AES key. Follow the instructions in the program!
+    2.  Share your public key! The public key allows for others to send you their AES key safely. Name it whatever you want, like yourNamePublicKey.txt, and send it to your friends using whatever means you want.
+    3.  To share your AES key, you have to encrypt it with someone's public key, and then send it to them. They will be able to decrypt it with their private key.
+    4.  You could also encrypt the AES key with your own private key after encrypting it with someone else's private key, if for some reason you need to prove your identity.
+    5.  To encrypt a file, you will have to use your AES key. Choose the option to encrypt a file, follow the instructions, and you'll now have an encrypted version of your file.
+    6.  To decrypt a file, you will have to use the AES key used to encrypt it. Choose the option to decrypt the file, follow the instructions, and you'll now have a decrypted version of the file.
+
+
+Public key:
+    Share with whoever you want.
+    Can decrypt the messages encrypted by its private counterpart and vice versa.
+
+Private key:
+    KEEP SECRET AT ALL COST. Generate a new private key, and a new AES key if your private key is leaked.
+    Can decrypt the messages encrypted by its public counterpart and vice versa.
+
+Symmetrical (AES) key:
+    Is used for both encrypting and decrypting.
+    Should be updated frequently in a formal setting.
