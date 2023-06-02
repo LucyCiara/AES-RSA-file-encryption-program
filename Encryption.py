@@ -186,7 +186,6 @@ def AESEncryption(FILENAME: str, FILENAME2: str, sBox: dict):
                 roundKeyList[i+1].append(KeyChunk[x])
             for x in range(3):
                 for y in range(4):
-                    #!
                     xor = roundKeyList[i][x*4:x*4+4][y]^roundKeyList[i+1][x*4:x*4+4][y]
                     roundKeyList[i+1].append(xor)
 
@@ -206,6 +205,30 @@ def AESEncryption(FILENAME: str, FILENAME2: str, sBox: dict):
             for x in range(i):
                 dataToEncrypt.insert(i*4, dataToEncrypt.pop(i*4+3))
 
+    #*    This function does the mix columns process in AES encryption, which diffuses errors across columns. 
+    def mixColumn(dataToEncrypt, TABLE):
+        #!  Source:   (rcgldr, https://stackoverflow.com/questions/70261458/how-to-perform-addition-and-multiplication-in-f-28)
+        #*  This function multiplies two binary numbers using the Irreducible Polynomal Theorem gf(2^3), which is good for the 16-byte finite field, because it allows for multiplication without exceeding the 8-bit limit of a byte.
+        def mpy(x, y):                  # mpy two 8 bit values
+            p = 0b100011011             # mpy modulo x^8+x^4+x^3+x+1
+            m = 0                       # m will be product
+            for i in range(8):
+                m = m << 1
+                if m & 0b100000000:
+                    m = m ^ p
+                if y & 0b010000000:
+                    m = m ^ x
+                y = y << 1
+            return m
+    
+        #*  This loop multiplies bytes of the file you want to encrypt with the Mix Column table, and XORs each product to derive a new byte from all the bytes of a column. It does this 4 times, or 1 time for each row of the Mix Column table.
+        for i in range(4):
+            tempList = []
+            for x in range(4):
+                tempList.append((mpy(dataToEncrypt[i], TABLE[0+x*4]))^(mpy(dataToEncrypt[i+4], TABLE[1+x*4])^(mpy(dataToEncrypt[i+8], TABLE[2+x*4])))^(mpy(dataToEncrypt[i+12], TABLE[3+x*4])))
+            for x in range(4):
+                dataToEncrypt.pop(i+x*4)
+                dataToEncrypt.insert(i+x*4, tempList[x])
 
     #*  Fetches and prepares the bytes of a file, and then expands the AES key
     data = list(get_binary_data(FILENAME))
@@ -221,6 +244,12 @@ def AESEncryption(FILENAME: str, FILENAME2: str, sBox: dict):
         for x in range(1, 10):
             substituteBytes(tempList, sBox)
             shiftRows(tempList)
+            mixColumn(tempList, [
+                                2, 3, 1, 1,
+                                1, 2, 3, 1,
+                                1, 1, 2, 3,
+                                3, 1, 1, 2
+                                ])
             roundKeyEncode(tempList, roundKeyList[x])
         substituteBytes(tempList, sBox)
         shiftRows(tempList)
@@ -323,6 +352,31 @@ def AESDecryption(FILENAME: str, FILENAME2: str, sBox: dict, rsBox: dict):
             for x in range(i):
                 dataToDecrypt.insert(i*4+3, dataToDecrypt.pop(i*4))
 
+    #*    This function does the mix columns process in AES encryption, which diffuses errors across columns. 
+    def invMixColumn(dataToEncrypt, TABLE):
+        #!  source:   (rcgldr, https://stackoverflow.com/questions/70261458/how-to-perform-addition-and-multiplication-in-f-28)
+        #*  This function multiplies two binary numbers using the Irreducible Polynomal Theorem gf(2^3), which is good for the 16-byte finite field, because it allows for multiplication without exceeding the 8-bit limit of a byte.
+        def mpy(x, y):                  # mpy two 8 bit values
+            p = 0b100011011             # mpy modulo x^8+x^4+x^3+x+1
+            m = 0                       # m will be product
+            for i in range(8):
+                m = m << 1
+                if m & 0b100000000:
+                    m = m ^ p
+                if y & 0b010000000:
+                    m = m ^ x
+                y = y << 1
+            return m
+
+        #*  This loop multiplies bytes of the file you want to encrypt with the Mix Column table, and XORs each product to derive a new byte from all the bytes of a column. It does this 4 times, or 1 time for each row of the Mix Column table.
+        for i in range(4):
+            tempList = []
+            for x in range(4):
+                tempList.append((mpy(dataToEncrypt[i], TABLE[0+x*4]))^(mpy(dataToEncrypt[i+4], TABLE[1+x*4])^(mpy(dataToEncrypt[i+8], TABLE[2+x*4])))^(mpy(dataToEncrypt[i+12], TABLE[3+x*4])))
+            for x in range(4):
+                dataToEncrypt.pop(i+x*4)
+                dataToEncrypt.insert(i+x*4, tempList[x])
+
     #*  This function substitues every byte in the 16-byte chunk. dataToDecrypt is a 16-byte chunk of data, table is either an S-Box (sBox) or a reverse S-Box (rsBox).
     def substituteBytes(dataToDecrypt, table):
         for i in range(len(dataToDecrypt)):
@@ -342,6 +396,12 @@ def AESDecryption(FILENAME: str, FILENAME2: str, sBox: dict, rsBox: dict):
         substituteBytes(tempList, rsBox)
         for x in range(1, 10):
             roundKeyDecode(tempList, roundKeyList[-x-1])
+            invMixColumn(tempList, [
+                                    14, 11, 13, 9,
+                                    9, 14, 11, 13,
+                                    13, 9, 14, 11,
+                                    11, 13, 9, 14
+                                    ])
             invShiftRows(tempList)
             substituteBytes(tempList, rsBox)
         roundKeyDecode(tempList, roundKeyList[0])
@@ -382,8 +442,6 @@ while run:
     elif inputString == "6":
         inputString = input("Write the name of the file you want to decrypt.\n")
         inputString2 = input("Write the filename of the file containing the AES key you want to decrypt with.\nExample:   symmetricalKey.txt\n")
-        AESDecryption(inputString, "symmetricalKey.txt", sBox, rsBox)
+        AESDecryption(inputString, inputString2, sBox, rsBox)
     else:
         run = False
-
-
